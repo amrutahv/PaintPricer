@@ -91,7 +91,17 @@ table(min_data$recipient)
 table(min_data$occasion)
 table(min_data$non_taxable)
 
+###### subsetting cheap paintings ########
+
 cheap_art <- subset(min_data,min_data$price <= 1000)
+p = 541078062 ###this is the listing which has only watercolor pigments
+
+cheap_art <- cheap_art [cheap_art$listing_id != p, ]
+
+unrel.res <- grepl('christmas ball', cheap_art$materials_col, ignore.case = T)
+table(unrel.res)
+
+cheap_art <- cheap_art[!(unrel.res), ]
 
 ggplot(data = cheap_art, aes(x = non_taxable, y = price))+
   geom_boxplot()
@@ -188,6 +198,17 @@ for (i in 1:length(pri_indx)){
 }
 table(cheap_art$art_type)
 
+mix.res <- grepl('mixed medi', cheap_art$materials_col, ignore.case = T)
+table(mix.res)
+
+for (i in 1:length(mix.res)){
+  if ( mix.res[i] )  {
+    cheap_art$art_type[i] <- 'mixed'
+  } 
+}
+
+table(cheap_art$art_type)
+
 #### nearly 27000 paintings have been classified correctly
 table(!is.na(cheap_art$art_type))
 
@@ -195,33 +216,6 @@ ggplot(cheap_art, aes(art_type, price))+
   geom_boxplot()
 
 #### classifying based on materials #########
-cheap_art$raw_mat <- character(length = nrow(cheap_art))
-
-can.res <- lapply(cheap_art$materials, function(ch) grep("canvas", 
-                                                             ch, ignore.case = T))
-can_indx <- sapply(can.res, function(x) length(x) > 0)
-table(can_indx)
-
-for (i in 1:length(can_indx)){
-  if (can_indx[i]){
-    cheap_art$raw_mat[i] <- 'canvas'
-  } 
-}
-table(cheap_art$raw_mat)
-
-pap.res <- lapply(cheap_art$materials, function(ch) grep("paper", 
-                                                         ch, ignore.case = T))
-pap_indx <- sapply(pap.res, function(x) length(x) > 0)
-table(pap_indx)
-
-
-for (i in 1:length(pap_indx)){
-  if (pap_indx[i]){
-    cheap_art$raw_mat[i] <- 'paper'
-  } 
-}
-table(cheap_art$raw_mat)
-
 ## converting materials into a simple vector
 
 cheap_art$materials_col <- character(length = nrow(cheap_art))
@@ -231,21 +225,92 @@ for(i in 1:length(cheap_art$materials_col)){
   
 }
 
-table(cheap_art$materials_col)
 
-can.glas <- grepl('canvas', cheap_art$materials_col, ignore.case = T) & 
-  grepl('glass', cheap_art$materials_col, ignore.case = T)
+#### new column to simplify materials ####
+cheap_art$raw_mat <- character(length = nrow(cheap_art))
+## pre-classify paintings to photo paper
 
-table(can.glas)
-cheap_art$materials[which(can.glas)]
-
-
-pap.can <- grepl('canvas', cheap_art$materials_col, ignore.case = T) &
-  grepl('paper', cheap_art$materials_col, ignore.case = T)
-table(pap.can)
-cheap_art$materials[which(pap.can)]
-
-if(cheap_art$art_type == 'prints'){
-  cheap_art$materials_col <- 'paper'
+for(i in 1:nrow(cheap_art)){
+  if(is.na(cheap_art$art_type[i])){
+    cheap_art$raw_mat[i] <- ''
+  } else if(cheap_art$art_type[i] == 'prints'){
+    cheap_art$raw_mat[i] <- 'photo paper'
+  }
+  
 }
+
+### classifying watercolor papers
+
+pap.res <- grepl('paper', cheap_art$materials_col, ignore.case = T)
+
+table(pap.res)
+length(pap.res)
+
+for(i in 1:nrow(cheap_art)){
+  if(is.na(cheap_art$art_type[i])){
+    cheap_art$raw_mat[i] <- ''
+  } else if ( ( cheap_art$art_type[i] == 'watercolor' ) & 
+              ( pap.res[i] == T ) ) {
+                cheap_art$raw_mat[i] <- 'wat.paper'
+              }
+}
+
+
+pri.res <- grepl('print', cheap_art$materials_col, ignore.case = T)
+
+table(pri.res)
+
+for (i in 1:nrow(cheap_art)){
+  if ( ( pri.res[i] ) ){
+    cheap_art$raw_mat[i] <- 'photo paper'
+  }
+}
+
+table(cheap_art$raw_mat)
+
+can.res <- grepl('canvas', cheap_art$materials_col, ignore.case = T)
+
+for(i in 1:nrow(cheap_art)){
+  if( can.res [i]) {
+    cheap_art$raw_mat[i] <- 'canvas'
+      
+  }
+}
+
+wat.res <- grepl('watercolor', cheap_art$description, ignore.case = T)
+
+
+
+for(i in 1:nrow(cheap_art)){
+  if( ( cheap_art$raw_mat[i] == '' ) & ( wat.res[i] ) ){
+    cheap_art$raw_mat[i] <- 'wat.paper'
+  }
+}
+
+table(cheap_art$raw_mat)
+
+###### classifying dimensions of painting: area ########
+cheap_art$dimen_item <- as.numeric(cheap_art$item_length) * 
+  as.numeric(cheap_art$item_height)
+hist(cheap_art$dimen_item)
+table(is.na(cheap_art$dimen_item))
+
+###### classifying content of painting using tags ######
+
+cheap_art$tag_col <- character(length = nrow(cheap_art))
+
+for(i in 1:length(cheap_art$tag_col)){
+  cheap_art$tag_col[i] <- paste(cheap_art$tags[[i]], collapse = ",")
+  
+}
+
+pri.res.2 <- grepl('print', cheap_art$tag_col, ignore.case = T) 
+
+for (i in 1:nrow(cheap_art)){
+  if ( ( pri.res.2[i] ) ){
+    cheap_art$raw_mat[i] <- 'photo paper'
+    cheap_art$art_type[i] <- 'prints'
+  }
+}
+
 
