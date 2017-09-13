@@ -95,20 +95,30 @@ table(min_data$non_taxable)
 
 cheap_art <- subset(min_data,min_data$price <= 1000)
 p = 541078062 ###this is the listing which has only watercolor pigments
-
+dim(cheap_art)
 cheap_art <- cheap_art [cheap_art$listing_id != p, ]
 
-unrel.res <- grepl('christmas ball', cheap_art$materials_col, ignore.case = T)
+###### converting list columns into a simple vector ##########
+cheap_art$tag_col <- sapply(cheap_art$tags, paste0, collapse = ',')
+str(cheap_art$tag_col)
+cheap_art$mat_col <- sapply(cheap_art$materials, paste0, collapse = ',')
+str(cheap_art$mat_col)
+cheap_art$tax_col <- sapply(cheap_art$taxonomy_path, paste0, collapse = ',')
+str(cheap_art$tax_col)
+
+unrel.res <- grepl('christmas ball', cheap_art$mat_col, ignore.case = T)
 table(unrel.res)
 
 cheap_art <- cheap_art[!(unrel.res), ]
 
-ggplot(data = cheap_art, aes(x = non_taxable, y = price))+
-  geom_boxplot()
-
-hist(cheap_art$quantity[cheap_art$quantity <= 1000])
-
-quantile(cheap_art$quantity[cheap_art$quantity <= 1000])
+#ggplot(data = cheap_art, aes(x = non_taxable, y = price))+
+#  geom_boxplot()
+#hist(cheap_art$quantity[cheap_art$quantity <= 1000])
+#quantile(cheap_art$quantity[cheap_art$quantity <= 1000])
+#cheap_art$tag_col <- character(length = nrow(cheap_art))
+#for(i in 1:length(cheap_art$tag_col)){
+#  cheap_art$tag_col[i] <- paste(cheap_art$tags[[i]], collapse = ",")
+#} found a shorter method above
 
 #### which variables might be of interest? ###############
 # response variable: price
@@ -137,68 +147,60 @@ ggplot(data = cheap_art[cheap_art$views<= 2e+05, ], aes(x = views, y = price))+
 
 cheap_art[cheap_art$num_favorers <= 2000, ] %>%
   ggplot(aes(x = num_favorers, y = price))+
-  geom_point()
-
+  geom_point()cheap_art$tag_col <- character(length = nrow(cheap_art))
 
 ###### classify paintings based on taxonomy path ###########
 
 ### initialize a column for painting type
 cheap_art$art_type <- NA
 #### classifying the acrylic paintings
-acr.res <- lapply(cheap_art$taxonomy_path, function(ch) grep("acrylic", 
-                                                             ch, ignore.case = T))
-acr_indx <- sapply(acr.res, function(x) length(x) > 0)
-table(acr_indx)
+acr.res <- grepl('acrylic', cheap_art$tax_col, ignore.case = T) 
+table(acr.res)
 
-for (i in 1:length(acr_indx)){
-  if (acr_indx[i]){
+for (i in 1:nrow(cheap_art)){
+  if ( acr.res[i] ){
     cheap_art$art_type[i] <- 'acrylic'
   } else{
     cheap_art$art_type[i] <- NA
   }
 }
+
 table(cheap_art$art_type)
 
 ### watercolors 
-wat.res <- lapply(cheap_art$taxonomy_path, function(ch) grep("watercolor", 
-                                                             ch, ignore.case = T))
-wat_indx <- sapply(wat.res, function(x) length(x) > 0)
-table(wat_indx)
+wat.res <- grepl('watercolor', cheap_art$tax_col, ignore.case = T) 
+table(wat.res)  
 
-for (i in 1:length(wat_indx)){
-  if (wat_indx[i]){
+for (i in 1:nrow(cheap_art)){
+  if ( wat.res[i] ){
     cheap_art$art_type[i] <- 'watercolor'
   } 
 }
 table(cheap_art$art_type)
 
 #### oil paintings
-oil.res <- lapply(cheap_art$taxonomy_path, function(ch) grep("oil", 
-                                                             ch, ignore.case = T))
-oil_indx <- sapply(oil.res, function(x) length(x) > 0)
-table(oil_indx)
-
-for (i in 1:length(oil_indx)){
-  if (oil_indx[i]){
+oil.res <- grepl('oil', cheap_art$tax_col, ignore.case = T) 
+table(oil.res)  
+  
+for (i in 1:nrow(cheap_art)){
+  if ( oil.res[i] ){
     cheap_art$art_type[i] <- 'oil'
   } 
 }
 table(cheap_art$art_type)
 
 ### also classifying the prints
-pri.res <- lapply(cheap_art$taxonomy_path, function(ch) grep("prints", 
-                                                             ch, ignore.case = T))
-pri_indx <- sapply(pri.res, function(x) length(x) > 0)
-table(pri_indx)
+pri.res <- grepl('prints', cheap_art$tax_col, ignore.case = T)
+table(pri.res)
 
-for (i in 1:length(pri_indx)){
-  if (pri_indx[i]){
+for (i in 1:nrow(cheap_art)){
+  if ( pri.res[i] ){
     cheap_art$art_type[i] <- 'prints'
   } 
 }
 table(cheap_art$art_type)
 
-mix.res <- grepl('mixed medi', cheap_art$materials_col, ignore.case = T)
+mix.res <- grepl('mixed medi', cheap_art$mat_col, ignore.case = T)
 table(mix.res)
 
 for (i in 1:length(mix.res)){
@@ -216,18 +218,8 @@ ggplot(cheap_art, aes(art_type, price))+
   geom_boxplot()
 
 #### classifying based on materials #########
-## converting materials into a simple vector
+cheap_art[, 'raw_mat'] <- NA
 
-cheap_art$materials_col <- character(length = nrow(cheap_art))
-
-for(i in 1:length(cheap_art$materials_col)){
-  cheap_art$materials_col[i] <- paste(cheap_art$materials[[i]], collapse = ",")
-  
-}
-
-
-#### new column to simplify materials ####
-cheap_art$raw_mat <- character(length = nrow(cheap_art))
 ## pre-classify paintings to photo paper
 
 for(i in 1:nrow(cheap_art)){
@@ -241,14 +233,14 @@ for(i in 1:nrow(cheap_art)){
 
 ### classifying watercolor papers
 
-pap.res <- grepl('paper', cheap_art$materials_col, ignore.case = T)
+pap.res <- grepl('paper', cheap_art$mat_col, ignore.case = T)
 
 table(pap.res)
 length(pap.res)
 
 for(i in 1:nrow(cheap_art)){
   if(is.na(cheap_art$art_type[i])){
-    cheap_art$raw_mat[i] <- ''
+    cheap_art$raw_mat[i] <- NA
   } else if ( ( cheap_art$art_type[i] == 'watercolor' ) & 
               ( pap.res[i] == T ) ) {
                 cheap_art$raw_mat[i] <- 'wat.paper'
@@ -256,7 +248,7 @@ for(i in 1:nrow(cheap_art)){
 }
 
 
-pri.res <- grepl('print', cheap_art$materials_col, ignore.case = T)
+pri.res <- grepl('print', cheap_art$mat_col, ignore.case = T)
 
 table(pri.res)
 
@@ -268,7 +260,8 @@ for (i in 1:nrow(cheap_art)){
 
 table(cheap_art$raw_mat)
 
-can.res <- grepl('canvas', cheap_art$materials_col, ignore.case = T)
+can.res <- grepl('canvas', cheap_art$mat_col, ignore.case = T)
+table(can.res)
 
 for(i in 1:nrow(cheap_art)){
   if( can.res [i]) {
@@ -277,12 +270,11 @@ for(i in 1:nrow(cheap_art)){
   }
 }
 
+#### more cleaning using description tags
 wat.res <- grepl('watercolor', cheap_art$description, ignore.case = T)
-
-
-
+table(wat.res)
 for(i in 1:nrow(cheap_art)){
-  if( ( cheap_art$raw_mat[i] == '' ) & ( wat.res[i] ) ){
+  if( ( is.na(cheap_art$raw_mat[i] ) ) & ( wat.res[i] ) ){
     cheap_art$raw_mat[i] <- 'wat.paper'
   }
 }
@@ -294,15 +286,9 @@ cheap_art$dimen_item <- as.numeric(cheap_art$item_length) *
   as.numeric(cheap_art$item_height)
 hist(cheap_art$dimen_item)
 table(is.na(cheap_art$dimen_item))
+table(!is.na(cheap_art$dimen_item))
 
 ###### classifying content of painting using tags ######
-
-cheap_art$tag_col <- character(length = nrow(cheap_art))
-
-for(i in 1:length(cheap_art$tag_col)){
-  cheap_art$tag_col[i] <- paste(cheap_art$tags[[i]], collapse = ",")
-  
-}
 
 pri.res.2 <- grepl('print', cheap_art$tag_col, ignore.case = T) 
 
@@ -313,4 +299,71 @@ for (i in 1:nrow(cheap_art)){
   }
 }
 
+### classifying digital prints
+table(cheap_art$is_digital)
 
+for ( i in 1:nrow(cheap_art)){
+  if ( cheap_art$is_digital[i] ){
+    cheap_art$raw_mat[i] <- 'digital'
+    cheap_art$art_type[i] <- 'dig.art'
+  }
+}
+
+table(cheap_art$art_type)
+table(!is.na(cheap_art$art_type)) ## filled in most of data
+table(cheap_art$raw_mat)
+table(!is.na(cheap_art$raw_mat))
+
+### starting with a few variables at the moment ###
+names(cheap_art)
+hist(cheap_art$quantity)
+quantile(cheap_art$quantity)
+dim(cheap_art[which(cheap_art$quantity < 1000), ])
+cheap_art_use <- cheap_art[!(cheap_art$quantity == 7992), ]
+names(cheap_art_use)
+relfeat <- c('title', 'description', 'price', 'quantity', 'views','num_favorers',
+             'who_made', 'when_made', 'is_customizable', 'has_variations', 'tag_col',
+             'mat_col', 'tax_col', 'art_type', 'raw_mat', 'dimen_item')
+
+mod_data <- cheap_art_use[, relfeat]
+
+#### plugging in more holes in the art_type as it is my most important predictor
+oil.res2 <- grepl('oil color | oil painting', mod_data$mat_col)
+table(oil.res2)
+
+for(plugs in 1:nrow(mod_data)){
+  if( is.na(mod_data$art_type[plugs] ) & ( oil.res2[plugs] )){
+    mod_data$art_type[plugs] <- 'oil'
+    
+  }
+}
+
+oil.res3 <- grepl('oil color | oil painting', mod_data$tag_col, ignore.case = T)
+table(oil.res3)
+
+
+for(plugs in 1:nrow(mod_data)){
+  if( is.na(mod_data$art_type[plugs] ) & ( oil.res3[plugs] )){
+    mod_data$art_type[plugs] <- 'oil'
+    
+  }
+}
+
+
+
+
+
+table(mod_data$art_type)
+table(cheap_art_use$art_type) # compare above table with this one
+table(!is.na(cheap_art$art_type))
+table(!is.na(mod_data$art_type))
+
+table(mod_data$art_type,mod_data$raw_mat)
+
+table(mod_data$raw_mat, mod_data$is_customizable)
+
+table(mod_data$art_type, mod_data$is_customizable)
+
+hist(mod_data$price)
+hist(mod_data$dimen_item)
+mod_data$dimen_item
