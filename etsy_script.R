@@ -6,6 +6,7 @@ library(jsonlite)
 library(dplyr)
 library(ggplot2)
 library(stringr)
+library(randomForest)
 
 #####  downloading data from the Etsy API #####
 
@@ -367,3 +368,38 @@ table(mod_data$art_type, mod_data$is_customizable)
 hist(mod_data$price)
 hist(mod_data$dimen_item)
 mod_data$dimen_item
+
+names(mod_data)
+
+############ random forest !!! ############
+
+rf_data1 <- mod_data[, c('price', 'quantity', 'views', 'num_favorers', 'who_made',
+                       'when_made', 'is_customizable', 'has_variations', 'art_type',
+                       'raw_mat')]
+rf_data1 <- rf_data1[complete.cases(rf_data1), ]
+rf_data1 <- as.data.frame(unclass(rf_data1))
+str(rf_data1)
+
+
+train1 <- sample(nrow(rf_data1), nrow(rf_data1) * 0.8)
+data_train1 <- rf_data1[train1, ]
+data_test1 <- rf_data1[-train1, ]
+
+rfm1 <- randomForest::randomForest(price ~., data_train1, ntree = 500, 
+                                   na.action = na.omit)
+rfm1
+
+rfm2 <- randomForest::randomForest(price ~., data_train1, ntree = 500, 
+                                   na.action = na.omit, mtry = 4)
+rfm2
+
+rfm3 <- randomForest::randomForest(price ~., data_train1, ntree = 5000, 
+                                   na.action = na.omit, sampsize = 5000)
+rfm3
+
+rfm4 <- randomForest::randomForest(price ~., data_train1, ntree = 5000, 
+                                   na.action = na.omit, sampsize = 7000)
+rfm4
+
+
+glm1 <- glm(price ~., data_train1, family = 'gaussian')
