@@ -1,6 +1,6 @@
 packrat::init()
 library(rvest)
-
+library(stringr)
 ########################################### 1 #####################
 etsy_listing <- read_html("https://www.etsy.com/listing/271284798/large-abstract-painting-original-oil?ref=shop_home_active_16")
 
@@ -11,7 +11,7 @@ title <- etsy_listing %>% html_nodes('h1 span') %>% html_text()
 price.str <- etsy_listing%>% html_nodes(xpath = '//*[(@id = "listing-price")]')%>% 
   html_text(trim = T)
 
-library(stringr)
+
 price <- as.numeric(str_match_all(price.str, '[0-9]+.[0-9]+'))
 
 materials <- etsy_listing %>% html_nodes(xpath = '//*[(@id = "overview-materials")]') %>%
