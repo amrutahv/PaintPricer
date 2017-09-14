@@ -7,7 +7,7 @@ library(dplyr)
 library(ggplot2)
 library(stringr)
 library(randomForest)
-
+library(data.table)
 #####  downloading data from the Etsy API #####
 
 #listings <- fromJSON('https://openapi.etsy.com/v2/listings/active?api_key=gxx1r5uo1zpe5c55jf003xn5&category=art/painting')
@@ -315,18 +315,25 @@ table(!is.na(cheap_art$art_type)) ## filled in most of data
 table(cheap_art$raw_mat)
 table(!is.na(cheap_art$raw_mat))
 
-### starting with a few variables at the moment ###
+####### starting with a few variables at the moment ### #########
 names(cheap_art)
 hist(cheap_art$quantity)
 quantile(cheap_art$quantity)
 dim(cheap_art[which(cheap_art$quantity < 1000), ])
 cheap_art_use <- cheap_art[!(cheap_art$quantity == 7992), ]
 names(cheap_art_use)
-relfeat <- c('title', 'description', 'price', 'quantity', 'views','num_favorers',
+relfeat <- c('listing_id', 'title', 'description', 'price', 'quantity', 'views','num_favorers',
              'who_made', 'when_made', 'is_customizable', 'has_variations', 'tag_col',
              'mat_col', 'tax_col', 'art_type', 'raw_mat', 'dimen_item')
 
-mod_data <- cheap_art_use[, relfeat]
+mod_df <- cheap_art_use[, relfeat]
+
+
+#### converting to a datatable
+mod_data <- data.table(mod_df)
+mod_data
+
+setkeyv(mod_data, c("art_type", "price", "listing_id"))
 
 #### plugging in more holes in the art_type as it is my most important predictor
 oil.res2 <- grepl('oil color | oil painting', mod_data$mat_col)
@@ -355,7 +362,7 @@ for(plugs in 1:nrow(mod_data)){
 
 
 table(mod_data$art_type)
-table(cheap_art_use$art_type) # compare above table with this one
+table(cheap_art_use$art_type) # compare above table with this one: above should be more
 table(!is.na(cheap_art$art_type))
 table(!is.na(mod_data$art_type))
 
@@ -376,8 +383,9 @@ names(mod_data)
 rf_data1 <- mod_data[, c('price', 'quantity', 'views', 'num_favorers', 'who_made',
                        'when_made', 'is_customizable', 'has_variations', 'art_type',
                        'raw_mat')]
+rf_data1 <- data.table(rf_data1, stringsAsFactors = T)
 rf_data1 <- rf_data1[complete.cases(rf_data1), ]
-rf_data1 <- as.data.frame(unclass(rf_data1))
+setkeyv(rf_data1, c('price', 'art_type'))
 str(rf_data1)
 
 
@@ -388,6 +396,7 @@ data_test1 <- rf_data1[-train1, ]
 rfm1 <- randomForest::randomForest(price ~., data_train1, ntree = 500, 
                                    na.action = na.omit)
 rfm1
+importance(rfm1)
 
 rfm2 <- randomForest::randomForest(price ~., data_train1, ntree = 500, 
                                    na.action = na.omit, mtry = 4)
@@ -401,5 +410,259 @@ rfm4 <- randomForest::randomForest(price ~., data_train1, ntree = 5000,
                                    na.action = na.omit, sampsize = 7000)
 rfm4
 
-
+hist(rf_data1$price)
 glm1 <- glm(price ~., data_train1, family = 'gaussian')
+
+####### best model till now ######
+
+rfm5_d1 <- randomForest(log(price) ~., data_train1)
+rfm5_d1 #### best model till now :)
+
+rfm5_d1
+
+rfm5_d1$importance 
+
+plot(rfm5_d1)
+varImpPlot(rfm5_d1)
+
+predict_rfm5d1 <- predict(rfm5_d1, data_test1)
+predict_rfm5d1
+
+predperf_rfm5d1 <- data.frame(price = log(data_test1$price), predicted = predict_rfm5d1)
+
+ggplot(predperf_rfm5d1, aes(price, predicted))+
+  geom_point()+
+  geom_smooth(method = 'lm', se = F)###### pretty good!!!!!!!!!!!!!
+
+rfm5_d1cv <- rfcv(log(data_train1$price), data_train1[,-1])
+
+names(data_train1)
+
+
+##### improving the model ##########
+######### editing quantity column
+
+hist(data_train2$quantity, breaks = 500)
+?hist
+
+hist(data_train1$quantity, xlim = c(0,20), breaks = 1000)
+
+length(which(data_train2$quantity > 100))
+data_train2[quantity >= 100, ]%>%
+  ggplot(aes(quantity,price,col = art_type))+
+  geom_point()
+
+data_train2[quantity == 1, ]%>%
+  ggplot(aes(art_type,price))+
+  geom_boxplot()
+
+hist(sqrt(data_train2$quantity))
+
+hist(1/data_train2$quantity)
+
+ggplot(data = data_train2, aes(x = log(quantity), y = log(price))) +
+  geom_point()
+
+plot(cut(data_train2$quantity, breaks = 70))
+
+plot(cut(data_train1$quantity, breaks = 70))
+
+range(data_train1$quantity)
+
+mean(data_train1$quantity)
+
+temp1 <- data_train1$quantity - mean(data_train1$quantity)
+hist(temp1)
+
+rf_data1$morethan1 <- logical(nrow(rf_data1))
+
+for(item in 1:nrow(rf_data1)){
+  if(rf_data1$quantity[item] == 1){
+    rf_data1$morethan1[item] <- F
+  } else{
+    rf_data1$morethan1[item] <- T
+  }
+}
+
+train4 <- sample(nrow(rf_data1), nrow(rf_data1) * 0.8)
+names(rf_data1)
+data_train4 <- rf_data1[train4, -2] ## not using quantity, but morethanone col
+data_test4 <- rf_data1[-train4, ]
+rfm6_d1 <- randomForest(log(price) ~., data = data_train4) 
+rfm6_d1
+rfm6_d1$importance
+
+
+
+######## PCA ....... just coz....... ###############
+pca <- prcomp(~ views + num_favorers + quantity, data = data_train1, scale = T)
+
+plot(pca)
+head(pca$x)
+
+ggplot(data = as.data.frame(pca$x), aes(PC1, PC2))+
+  geom_point()
+
+
+biplot(pca)
+summary(pca)
+
+## looking at correlation between variables
+
+ggplot(data = rf_data1, aes(x = quantity, y = price, col = art_type))+
+  geom_point()
+
+ggplot(data = rf_data1, aes(x = views, y = price, col = art_type))+
+  geom_point()
+
+ggplot(data = rf_data1, aes(x = views, y = num_favorers))+
+  geom_point()
+
+rf_data1[art_type == 'dig.art', ]%>%
+  ggplot(aes(quantity,price))+
+  geom_point()
+
+rf_data1[(art_type == 'dig.art' & price >= 300), ]
+
+
+
+####### reclassify expensive digital art ######
+
+exp.dig <- mod_data[(art_type == 'dig.art' & price >= 60), ] ## too expensive for digital art
+
+
+exp.dig[grepl('acrylic', tax_col, ignore.case = T),]$art_type <- 'acrylic'
+exp.dig[grepl('acrylic', tax_col, ignore.case = T),]$raw_mat <- 'canvas'
+
+exp.dig[grepl('mixed', tax_col, ignore.case = T),]$art_type <- 'mixed'
+exp.dig[grepl('canvas', mat_col, ignore.case = T),]$mat_col <- 'canvas'
+
+exp.dig[grepl('oil', tax_col, ignore.case = T),]$art_type <- 'oil'
+
+exp.dig[listing_id == 488073168]$art_type <- 'acrylic'
+exp.dig[listing_id == 488073168]$raw_mat <- 'wat.paper'
+
+exp.dig[grepl('canvas', description, ignore.case = T) & raw_mat == 'digital']$raw_mat <- 'canvas'
+exp.dig[art_type == 'oil']$raw_mat <- 'canvas'
+
+exp.dig[listing_id == 204903984]$art_type <- 'mixed'
+exp.dig[listing_id == 204903984]$raw_mat <- 'canvas'
+
+mod_data[listing_id %in% exp.dig$listing_id, ]$art_type <- exp.dig$art_type
+
+###### can come back to this late, at the moment, just remove all digital art instances
+
+######### removing all digital art ##################
+rf_data2 <- rf_data1[art_type != 'dig.art']
+
+
+ggplot(data =rf_data2, aes(x = quantity, y = price, col = art_type))+
+  geom_point()
+
+ggplot(data = rf_data2, aes(x = views, y = num_favorers))+
+  geom_point()
+hist(rf_data2$num_favorers/rf_data2$views)
+
+for(i in 1:nrow(rf_data2)){
+  if(rf_data2$views[i] != 0){
+    rf_data2$rev[i] <- rf_data2$num_favorers[i]/rf_data2$views[i]
+  } else {
+    rf_data2$rev[i] <- 0
+  }
+}
+
+table(is.na(rf_data2$rev))
+
+ggplot(data = rf_data2, aes(x = rev, y = price, col = art_type))+
+  geom_point()
+
+names(rf_data2)
+
+ggplot(data = rf_data2, aes(x = has_variations, y = price))+
+  geom_boxplot()
+
+ggplot(data = rf_data2, aes(x = is_customizable, y = price))+
+  geom_boxplot()
+ggplot(data = rf_data2, aes(x = when_made, y = price))+
+  geom_boxplot()
+ggplot(data = rf_data2, aes(x = who_made, y = price))+
+  geom_boxplot()
+ggplot(data = rf_data2, aes(x = raw_mat, y = price, col = art_type))+
+  geom_boxplot()
+table(rf_data2$raw_mat,rf_data2$art_type)
+
+####### RF again with rf_data2 (which doesn't have digital art) #######
+
+train2 <- sample(nrow(rf_data2), nrow(rf_data2) * 0.8)
+data_train2 <- rf_data2[train2, ]
+data_test2 <- rf_data2[-train2, ]
+
+names(data_train2)
+data_train2 <- data_train2[, c(1,2,5,6,7,8,9,10,11)]
+dim(data_train2)
+table(is.na(data_train2))
+
+rfm1_d2 <- randomForest::randomForest(price ~., data_train2)
+rfm1_d2
+rfm1_d2$importance
+rfm1_d2$rsq
+plot(rfm1_d2)
+
+rfm2_d2 <- randomForest::randomForest(price ~., data_train2, 
+                                      sampsize = 0.6 * nrow(data_train2))
+rfm2_d2
+
+rfm3_d2 <- randomForest::randomForest(log(price) ~., data_train2)
+rfm3_d2
+rfm3_d2$importance
+names(rf_data2)
+
+
+rfm4_d2 <- randomForest(log2(price) ~., data = data_train2)
+rfm4_d2
+
+
+######### checking model again with digital art and without 'rev' column ##########
+names(rf_data2)
+
+train3 <- sample(nrow(rf_data2), nrow(rf_data2) * 0.8)
+data_train3 <- rf_data2[train3, -11]
+data_test3 <- rf_data2[-train3, -11]
+
+rfm1_d3 <- randomForest(log(price) ~., data_train3)
+rfm1_d3 ### this performs slightly worse than rfm5_d1 so continuing with that for now
+
+####################### NLP ideas ###############################
+
+#### word2vec
+#### tf-idf :
+#### named entity recognition
+#### hard code tags column: classification to see which words occur together
+
+
+hist(data_train2$quantity/data_train2$price)
+
+################### Gradient Boosted Regression tree ###############
+install.packages('gbm')
+library(gbm)
+names(data_train1)
+str(data_traingb)
+# remove logical vectors: doesnt work with GBM
+data_traingb <- data_train1
+  
+data_traingb$is_customizable <- as.factor(data_traingb$is_customizable)
+data_traingb$has_variations <- as.factor(data_traingb$has_variations)
+
+gbm1_d1 <- gbm::gbm(log(price) ~., data = data_traingb, distribution = 'gaussian',
+                    n.trees = 2000)
+
+summary(gbm1_d1)
+gbmWithCrossValidation = gbm(formula = log(price) ~ .,
+                             distribution = "gaussian",
+                             data = data_traingb,
+                             n.trees = 2000,
+                             shrinkage = .1,
+                             n.minobsinnode = 200, 
+                             cv.folds = 5,
+                             n.cores = 1)
+bestTreeForPrediction = gbm.perf(gbmWithCrossValidation)
