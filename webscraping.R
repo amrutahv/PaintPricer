@@ -216,13 +216,13 @@ fav_vec <- unlist(str_split(unlist(str_match_all(fav_list, '[0-9]+ people')), " 
 
 num_favorers <- as.numeric(str_match(fav_vec, '[0-9]+')[1])
 
-#quantity_toggle <- new_url3 %>%
-  html_nodes(xpath = '//*[(@id = "inventory-select-quantity")]') %>%
+quantity_toggle <- new_url3 %>%
+  html_nodes(xpath = '//*[contains(concat( " ", @class, " " ), 
+             concat( " ", "mb-lg-2", " " ))]')%>%
   html_text()
 
-#quantity <- as.numeric(str_match_all(quantity_toggle, '[0-9]+'))
+quantity <- as.numeric(str_match_all(quantity_toggle, '[0-9]+'))
 
-quantity <- 1
 
 who_made <- 'i_did'
 
@@ -247,22 +247,138 @@ test_df <- data.frame(price,quantity,num_favorers,who_made,when_made,
                       is_customizable, has_variations)
 test_df$art_type <- character(length = nrow(test_df))
 
-if(grepl('oil', materials, ignore.case = T)){
+if(length(materials) > 0){
+  if(grepl('oil', materials, ignore.case = T)){
+    test_df$art_type <- 'oil'
+  } else if(grepl('acrylic', materials, ignore.case = T)){
+    test_df$art_type <- 'acrylic'
+  } else if(grepl('watercolor', materials, ignore.case = T)){
+    test_df$art_type <- 'watercolor'
+  } else {
+    test_df$art_type <- 'prints'
+  }
+} else if(grepl('oil', title, ignore.case = T)){
   test_df$art_type <- 'oil'
-} else if(grepl('acrylic', materials, ignore.case = T)){
+  } else if(grepl('acrylic', title, ignore.case = T)){
+    test_df$art_type <- 'acrylic'
+  } else if(grepl('watercolor', title, ignore.case = T)){
+    test_df$art_type <- 'watercolor'
+  } else {
+    test_df$art_type <- 'prints'
+}
+  
+
+
+test_df$raw_mat <- character(length = nrow(test_df))
+
+if(length(materials) > 0){
+  if(grepl('canvas', materials, ignore.case = T)){
+    test_df$raw_mat <- 'canvas'
+  } else if(grepl('watercolor | paper', materials, ignore.case = T)){
+    test_df$raw_mat <- 'wat.paper'
+  } 
+} else if(grepl('canvas', description, ignore.case = T)){
+  test_df$raw_mat <- 'canvas'
+  } else if(grepl('watercolor | paper', description, ignore.case = T)){
+    test_df$raw_mat <- 'wat.paper'
+}
+
+
+test_df
+
+####################################### 5 ###########################
+new_url4 <- read_html('https://www.etsy.com/listing/151997088/elk-original-watercolor-painting?ga_order=most_relevant&ga_search_type=all&ga_view_type=gallery&ga_search_query=&ref=sr_gallery_42')
+title <- new_url4 %>% html_nodes('h1 span') %>% html_text()
+
+description <- new_url4 %>%
+  html_nodes(xpath = '//*[contains(concat( " ", @class, " " ), concat( " ", "break-word", " " ))]') %>%
+  html_text()
+
+price.str <- new_url4%>% html_nodes(xpath = '//*[(@id = "listing-price")]')%>% 
+  html_text(trim = T)
+
+price <- as.numeric(str_match_all(price.str, '[0-9]+.[0-9]+'))
+
+materials <- new_url4 %>% html_nodes(xpath = '//*[(@id = "overview-materials")]') %>%
+  html_text()
+
+
+fav_list <- new_url4%>%
+  html_nodes(xpath = '//*[contains(concat( " ", @class, " " ), concat( " ", "properties", " " ))]') %>%
+  html_text()
+
+#str_match_all(fav_list[10], ' (\\d+)\\ ')
+fav_vec <- unlist(str_split(unlist(str_match_all(fav_list, '[0-9]+ people')), " "))
+
+num_favorers <- as.numeric(str_match(fav_vec, '[0-9]+')[1])
+
+quantity_toggle <- new_url4 %>%
+  html_nodes(xpath = '//*[contains(concat( " ", @class, " " ), 
+             concat( " ", "mb-lg-2", " " ))]')%>%
+  html_text()
+
+quantity <- as.numeric(str_match_all(quantity_toggle, '[0-9]+'))
+
+who_made <- 'i_did'
+
+when_made <- '2010_2017'
+
+is_customizable <- FALSE
+
+
+variation_toggle <- new_url4 %>%
+  html_nodes(xpath = '//*[(@id = "inventory-variation-select-0")]')%>%
+  html_text()
+
+has_variations <- FALSE
+if(length(variation_toggle) > 0){
+  has_variations <- TRUE
+} else {
+  has_variations <- FALSE
+}
+
+
+test_df <- data.frame(price,quantity,num_favorers,who_made,when_made,
+                      is_customizable, has_variations)
+test_df$art_type <- character(length = nrow(test_df))
+
+if(length(materials) > 0){
+  if(grepl('oil', materials, ignore.case = T)){
+    test_df$art_type <- 'oil'
+  } else if(grepl('acrylic', materials, ignore.case = T)){
+    test_df$art_type <- 'acrylic'
+  } else if(grepl('watercolor', materials, ignore.case = T)){
+    test_df$art_type <- 'watercolor'
+  } else {
+    test_df$art_type <- 'prints'
+  }
+} else if(grepl('oil', title, ignore.case = T)){
+  test_df$art_type <- 'oil'
+} else if(grepl('acrylic', title, ignore.case = T)){
   test_df$art_type <- 'acrylic'
-} else if(grepl('watercolor', materials, ignore.case = T)){
+} else if(grepl('watercolor', title, ignore.case = T)){
   test_df$art_type <- 'watercolor'
 } else {
   test_df$art_type <- 'prints'
 }
 
+
+
 test_df$raw_mat <- character(length = nrow(test_df))
 
-if(grepl('canvas', materials, ignore.case = T)){
+if(length(materials) > 0){
+  if(grepl('canvas', materials, ignore.case = T)){
+    test_df$raw_mat <- 'canvas'
+  } else if(grepl('watercolor | paper', materials, ignore.case = T)){
+    test_df$raw_mat <- 'wat.paper'
+  } 
+} else if(grepl('canvas', description, ignore.case = T)){
   test_df$raw_mat <- 'canvas'
-} else if(grepl('watercolor | paper', materials, ignore.case = T)){
+} else if(grepl('watercolor | paper', description, ignore.case = T)){
   test_df$raw_mat <- 'wat.paper'
 }
 
 test_df
+
+
+
