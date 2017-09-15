@@ -18,12 +18,12 @@ listing <- 'https://www.etsy.com/listing/271284798/large-abstract-painting-origi
 
 ###### user interface #############
 ui <- fluidPage(
-  titlePanel("Painting Price Check"),
+  titlePanel("PaintPricer/ArtSellR"),
   sidebarLayout(
     sidebarPanel(
-      textInput("url_inp", "Link to the painting", value = "Enter url from Etsy.com..."),
-      actionButton("button_url", "Generate"),
-      actionButton("demo", "Demo")
+      textInput("url_inp", "Listing URL"),
+      actionButton("button_url", "Generate")
+      
     ),
     mainPanel(
       textOutput("test_price"),
@@ -98,11 +98,12 @@ server2 <- function(input, output, session) {
     output$freqplot <- renderPlot({
       ggplot(training_plot(), aes(price))+
         geom_histogram()+
-        geom_vline(xintercept = test_price(), col = 'red', linetype = 'solid', size = 1.5)+
-        geom_vline(xintercept = exp(prediction()), col = 'deepskyblue', linetype = 'dashed', size = 1.5)+
+        geom_vline(aes(xintercept = test_price()), col = 'red', linetype = 'solid', size = 1.5, show_guide = T)+
+        geom_vline(aes(xintercept = exp(prediction())), col = 'deepskyblue', linetype = 'dashed', size = 1.5)+
         theme_bw(base_size = 16)+
-        xlab("Price")+
+        xlab(paste0("Price of ",training_feature()," paintings in USD"))+
         ylab("Frequency")
+        
     })
     
   })

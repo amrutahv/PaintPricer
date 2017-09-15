@@ -336,6 +336,8 @@ mod_data
 setkeyv(mod_data, c("art_type", "price", "listing_id"))
 table(mod_data$art_type)
 
+mod_data$raw_mat
+
 #### plugging in more holes in the art_type as it is my most important predictor
 oil.res2 <- grepl('oil color | oil painting', mod_data$mat_col)
 table(oil.res2)
@@ -761,7 +763,12 @@ exp(rmse_rfm1d4) #### average error in Dollar value
 
 ggplot(predperf_rfm1d4, aes(price, predicted))+
   geom_point()+
-  geom_smooth(method = 'lm', se = F)###### pretty good!!!!!!!!!!!!!
+  geom_abline(slope = 1, intercept = 0, size = 1.5, col = 'blue')+ ###### pretty good!!!!!!!!!!!!!
+  theme_bw(base_size = 16)+
+  ylim(0,6)+
+  xlab('Ln(Actual)')+
+  ylab('Ln(Predicted)')
+  
 
 qqnorm((predperf_rfm1d4$predicted - predperf_rfm1d4$price)/
          sd(predperf_rfm1d4$predicted - predperf_rfm1d4$price))
@@ -775,3 +782,36 @@ qqline((predperf_rfm1d4$predicted - predperf_rfm1d4$price)/
 ###### clustering
 ###### history of the seller 
 ###### shopping
+
+######### plots for Demo Day: week 2
+varImpPlot(rfm1_d4)
+ggplot(mod_data, aes(price))+
+  geom_histogram(bins = 200)+
+  theme_bw(base_size = 16)+
+  xlab('Price in USD')+
+  ylab('Count')
+
+ggplot(data = mod_data, aes(x = has_variations, y = price))+
+  geom_boxplot()
+
+mod_data[!(art_type %in% c('dig.art', 'prints'))]%>%
+ggplot(aes(x = when_made, y = price))+
+  geom_boxplot()
+
+ggplot(data = mod_data, aes(x = num_favorers, y = price))+
+  geom_point()
+
+ggplot(data = mod_data, aes(x = raw_mat, y = price))+
+  geom_boxplot()+
+  theme_bw(base_size = 16)+
+  xlab('Base type')+
+  ylab('Price in USD')
+
+mod_data$raw_mat[mod_data$raw_mat == "unknown"] <- 'unclassified'
+
+
+ggplot(mod_data, aes(art_type, price))+
+  geom_boxplot()+
+  theme_bw(base_size = 16)+
+  xlab('Medium type')+
+  ylab('Price in USD')

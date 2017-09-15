@@ -288,6 +288,7 @@ test_df
 
 ####################################### 5 ###########################
 new_url4 <- read_html('https://www.etsy.com/listing/151997088/elk-original-watercolor-painting?ga_order=most_relevant&ga_search_type=all&ga_view_type=gallery&ga_search_query=&ref=sr_gallery_42')
+
 title <- new_url4 %>% html_nodes('h1 span') %>% html_text()
 
 description <- new_url4 %>%
