@@ -38,12 +38,12 @@ for(i in 1:501){
 
 maj_data <- rbind_pages(pages1) # final masterfile with all listings
 
-sink("maj_data.txt")
-for(i in 1:nrow(maj_data)){
-  print(maj_data[i,])
-  
-}
-sink()
+# sink("maj_data.txt")
+# for(i in 1:nrow(maj_data)){
+#   print(maj_data[i,])
+#   
+# }
+# sink()
 
 
  
@@ -334,6 +334,7 @@ mod_data <- data.table(mod_df)
 mod_data
 
 setkeyv(mod_data, c("art_type", "price", "listing_id"))
+table(mod_data$art_type)
 
 #### plugging in more holes in the art_type as it is my most important predictor
 oil.res2 <- grepl('oil color | oil painting', mod_data$mat_col)
@@ -363,7 +364,7 @@ for(plugs in 1:nrow(mod_data)){
 
 table(mod_data$art_type)
 table(cheap_art_use$art_type) # compare above table with this one: above should be more
-table(!is.na(cheap_art$art_type))
+table(!is.na(cheap_art_use$art_type))
 table(!is.na(mod_data$art_type))
 
 table(mod_data$art_type,mod_data$raw_mat)
@@ -387,7 +388,7 @@ rf_data1 <- data.table(rf_data1, stringsAsFactors = T)
 rf_data1 <- rf_data1[complete.cases(rf_data1), ]
 setkeyv(rf_data1, c('price', 'art_type'))
 str(rf_data1)
-
+names(rf_data1)
 
 train1 <- sample(nrow(rf_data1), nrow(rf_data1) * 0.8)
 data_train1 <- rf_data1[train1, ]
@@ -425,19 +426,80 @@ rfm5_d1$importance
 plot(rfm5_d1)
 varImpPlot(rfm5_d1)
 
+
 predict_rfm5d1 <- predict(rfm5_d1, data_test1)
 predict_rfm5d1
 
 predperf_rfm5d1 <- data.frame(price = log(data_test1$price), predicted = predict_rfm5d1)
+caret::RMSE(predperf_rfm5d1$predicted, predperf_rfm5d1$price)
+
+sqrt(mean((predperf_rfm5d1$price - predperf_rfm5d1$predicted)^2))
+
+
 
 ggplot(predperf_rfm5d1, aes(price, predicted))+
   geom_point()+
   geom_smooth(method = 'lm', se = F)###### pretty good!!!!!!!!!!!!!
 
-rfm5_d1cv <- rfcv(log(data_train1$price), data_train1[,-1])
+qqnorm((predperf_rfm5d1$predicted - predperf_rfm5d1$price)/
+         sd(predperf_rfm5d1$predicted - predperf_rfm5d1$price))
 
-names(data_train1)
+qqline((predperf_rfm5d1$predicted - predperf_rfm5d1$price)/
+         sd(predperf_rfm5d1$predicted - predperf_rfm5d1$price))
 
+
+########## Learning curve ###########################
+data_train1
+data_test1
+learnCurve <- learing_curve_dat(data_train1 [],
+                                outcome = 'Price',
+                                test_prop = 1/4,
+                                verbose = T,
+                                method = 'rf')
+
+chunks <- seq(1000, nrow(data_train1), 1000)
+
+rmse <- function(actual, predicted) sqrt( mean( (actual - predicted)^2 ))
+curve_data <- data.frame(size = integer(length(chunks)),
+                         train_error = integer(length(chunks)),
+                         valid_error = integer(length(chunks)))
+
+for(i in 1:length(chunks)){
+  
+  size <- chunks[i]
+  
+  message("Running model for size", size)
+  
+  sampleidx <- sample(nrow(data_train1), size)
+  train_d <- data_train1[sampleidx, ]
+  test_d <- data_train1[-sampleidx, ]
+  rfm <- randomForest::randomForest(log(price) ~., train_d)
+  train.pred <- predict(rfm, train_d)
+  training_error <- rmse(log(train_d$price), train.pred)
+  valid.pred <- predict(rfm, test_d)
+  validation_error <- rmse(log(train_d$price), valid.pred)
+  curve_data[i, ] <-  c(chunks[i], train.pred, valid.pred)
+  
+}
+
+ggplot(curve_data, aes(size, train_error))+
+  geom_line()+
+  geom_line(aes(size, valid_error), color = 'red')
+
+
+library(caret)
+
+learnCurve <- learing_curve_dat(data_train1, test_prop = 0.75, verbose = T,
+                                method = 'rf', outcome = 'price')
+head(learnCurve)
+
+
+ggplot(learnCurve, aes(Training_Size, y = RMSE, col = Data))+
+  geom_smooth(method = 'loess')
+
+ggplot(learnCurve, aes(Training_Size, y = Rsquared, col = Data))+
+  geom_smooth(method = 'loess')
+names(rf_data1)
 
 ##### improving the model ##########
 ######### editing quantity column
@@ -666,3 +728,50 @@ gbmWithCrossValidation = gbm(formula = log(price) ~ .,
                              cv.folds = 5,
                              n.cores = 1)
 bestTreeForPrediction = gbm.perf(gbmWithCrossValidation)
+
+#################### getting a new model without number of views ##################
+rf_data4 <- rf_data1[, -"views"]
+
+write.csv(rf_data4, "training_data.csv")
+
+train4 <- sample(nrow(rf_data3), nrow(rf_data3) * 0.8)
+data_train4 <- rf_data3[train4, ]
+data_test4 <- rf_data3[-train4, ]
+
+
+rfm1_d4 <- randomForest(log(price) ~., data_train4)
+rfm1_d4
+
+rfm1_d4$importance 
+
+plot(rfm1_d4)
+varImpPlot(rfm1_d4)
+
+saveRDS(rfm1_d4, file = "rfm1_d4.rds")
+
+predict_rfm1d4 <- predict(rfm1_d4, data_test4)
+predict_rfm1d4
+
+predperf_rfm1d4 <- data.frame(price = log(data_test4$price), predicted = predict_rfm1d4)
+rmse_rfm1d4 <- caret::RMSE(predperf_rfm1d4$predicted, predperf_rfm1d4$price)
+
+sqrt(mean((predperf_rfm1d4$price - predperf_rfm1d4$predicted)^2)) ## same as above
+
+exp(rmse_rfm1d4) #### average error in Dollar value
+
+ggplot(predperf_rfm1d4, aes(price, predicted))+
+  geom_point()+
+  geom_smooth(method = 'lm', se = F)###### pretty good!!!!!!!!!!!!!
+
+qqnorm((predperf_rfm1d4$predicted - predperf_rfm1d4$price)/
+         sd(predperf_rfm1d4$predicted - predperf_rfm1d4$price))
+
+qqline((predperf_rfm1d4$predicted - predperf_rfm1d4$price)/
+         sd(predperf_rfm1d4$predicted - predperf_rfm1d4$price))
+
+
+
+###### image processsing ?
+###### clustering
+###### history of the seller 
+###### shopping
