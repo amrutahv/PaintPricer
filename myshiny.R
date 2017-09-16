@@ -3,7 +3,14 @@ library(ggplot2)
 library(rvest)
 library(stringr)
 library(randomForest)
-rfm_model <- readRDS('C:/Users/Amruta/Google Drive/DSprog/PaintPricer/rfm1_d4.rds')
+
+#### assesing model performance libraries, can be removed from here and put into etsy_script
+library(caret)
+library(car)
+
+#rfm_model <- readRDS('C:/Users/Amruta/Google Drive/DSprog/PaintPricer/rfm1_d4.rds')
+
+load("C:/Users/Amruta/Google Drive/DSprog/PaintPricer/scrape_from_url.R")
 
 training_data <- read.csv("C:/Users/Amruta/Google Drive/DSprog/PaintPricer/training_data.csv")
 levels(training_data$raw_mat)[1] <- 'digital'
@@ -12,7 +19,12 @@ training_data <- training_data[, -1]
 
 rfm1 <- randomForest(log(price) ~., training_data)
 
-load("C:/Users/Amruta/Google Drive/DSprog/PaintPricer/scrape_from_url.R")
+
+
+
+
+
+
 
 
 

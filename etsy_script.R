@@ -413,8 +413,61 @@ rfm4 <- randomForest::randomForest(price ~., data_train1, ntree = 5000,
                                    na.action = na.omit, sampsize = 7000)
 rfm4
 
+
 hist(rf_data1$price)
+
+################# Linear regression #########################
+
 glm1 <- glm(price ~., data_train1, family = 'gaussian')
+round(mean(glm1$residuals))
+
+glm2 <- glm(log(price) ~., data_train4, family = 'gaussian') ## using data_train4 which doesnt have views
+
+glm2
+
+round(mean(glm2$residuals))
+
+par(mfrow = c(2,2))
+plot(glm2)
+
+glm2.pred <- predict(glm2, data_test4)
+
+exp(RMSE(glm2.pred, log(data_test4$price))) ### worse than RF
+
+exp(RMSE(predperf_rfm1d4$predicted, predperf_rfm1d4$price))
+
+
+mean(abs(glm2.pred-log(data_test4$price))) ### worse than RF
+
+mean(abs(predperf_rfm1d4$predicted - predperf_rfm1d4$price))
+
+############## glm vs RF predicted values comparison ##########3
+predperf_glm2 <- data.frame(price = log(data_test4$price), glm.pred = glm2.pred)
+predperf_rfm1d4
+
+all.predictions <- merge(predperf_glm2,predperf_rfm1d4)
+
+all.pred <- melt(all.predictions, id = "price", value.name = 'predictions', variable.name = "model")
+names(all.pred)
+
+ggplot(data = all.pred,aes(x = price, y = predictions)) + 
+  geom_point(colour = "blue") +
+  geom_abline(intercept = 0, slope = 1, colour = "red") +
+  facet_wrap(~ model,ncol = 2) 
+  coord_cartesian(xlim = c(0,70),ylim = c(0,70)) +
+  ggtitle("Predicted vs. Actual, by model")
+
+ggplot(data = all.predictions, aes(x = price, y = glm2.pred))+
+  geom_point()
+
+
+#### check autocorrelateion of variables #
+acf(data_train4)
+
+ggplot() + geom_density(aes(residuals(glm2)))
+
+par(mfrow = c(1,1))
+spreadLevelPlot(glm2)
 
 ####### best model till now ######
 
@@ -754,14 +807,14 @@ saveRDS(rfm1_d4, file = "rfm1_d4.rds")
 predict_rfm1d4 <- predict(rfm1_d4, data_test4)
 predict_rfm1d4
 
-predperf_rfm1d4 <- data.frame(price = log(data_test4$price), predicted = predict_rfm1d4)
-rmse_rfm1d4 <- caret::RMSE(predperf_rfm1d4$predicted, predperf_rfm1d4$price)
+predperf_rfm1d4 <- data.frame(price = log(data_test4$price), RF.pred = predict_rfm1d4)
+rmse_rfm1d4 <- caret::RMSE(predperf_rfm1d4$RF.pred, predperf_rfm1d4$price)
 
-sqrt(mean((predperf_rfm1d4$price - predperf_rfm1d4$predicted)^2)) ## same as above
+sqrt(mean((predperf_rfm1d4$price - predperf_rfm1d4$RF.pred)^2)) ## same as above
 
 exp(rmse_rfm1d4) #### average error in Dollar value
 
-ggplot(predperf_rfm1d4, aes(price, predicted))+
+ggplot(predperf_rfm1d4, aes(price, RF.pred))+
   geom_point()+
   geom_abline(slope = 1, intercept = 0, size = 1.5, col = 'blue')+ ###### pretty good!!!!!!!!!!!!!
   theme_bw(base_size = 16)+
@@ -777,13 +830,16 @@ qqline((predperf_rfm1d4$predicted - predperf_rfm1d4$price)/
          sd(predperf_rfm1d4$predicted - predperf_rfm1d4$price))
 
 
+plot(rfm1_d4$y, rfm1_d4$y - rfm1_d4$predicted)
+
+
 
 ###### image processsing ?
 ###### clustering
 ###### history of the seller 
 ###### shopping
 
-######### plots for Demo Day: week 2
+######### plots for Demo Day: week 2 ###############################
 varImpPlot(rfm1_d4)
 ggplot(mod_data, aes(price))+
   geom_histogram(bins = 200)+
