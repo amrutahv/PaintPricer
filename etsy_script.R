@@ -789,9 +789,9 @@ rf_data4 <- rf_data1[, -"views"]
 
 write.csv(rf_data4, "training_data.csv")
 
-train4 <- sample(nrow(rf_data3), nrow(rf_data3) * 0.8)
-data_train4 <- rf_data3[train4, ]
-data_test4 <- rf_data3[-train4, ]
+train4 <- sample(nrow(rf_data4), nrow(rf_data4) * 0.8)
+data_train4 <- rf_data4[train4, ]
+data_test4 <- rf_data4[-train4, ]
 
 
 rfm1_d4 <- randomForest(log(price) ~., data_train4)
