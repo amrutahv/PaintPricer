@@ -8,6 +8,8 @@ library(ggplot2)
 library(stringr)
 library(randomForest)
 library(data.table)
+
+
 #####  downloading data from the Etsy API #####
 
 #listings <- fromJSON('https://openapi.etsy.com/v2/listings/active?api_key=gxx1r5uo1zpe5c55jf003xn5&category=art/painting')

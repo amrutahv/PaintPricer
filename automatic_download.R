@@ -1,3 +1,6 @@
+library(jsonlite)
+library(dplyr)
+
 url_list <- 'https://openapi.etsy.com/v2/listings/active?api_key=gxx1r5uo1zpe5c55jf003xn5&category=art/painting&limit=100'
 
 #list1 <- fromJSON(url_list)
@@ -5,25 +8,38 @@ url_list <- 'https://openapi.etsy.com/v2/listings/active?api_key=gxx1r5uo1zpe5c5
 
 pages1 <- list()
 
-for(i in 1:100){
+for(i in 1:501){
   mydata <- fromJSON(paste0(url_list,'&page=', i))
   message("Retrieving page ", i)
   pages1[[i]] <- mydata$results
   message(object.size(pages1))
-  if(i == 200){
-    Sys.sleep(60)
+  if(i == 100){
     message("Waiting 1 min at", i)
-  } else if(i == 350){
     Sys.sleep(60)
+  } else if(i == 200){
     message("Waiting 1 min at", i)
+    Sys.sleep(60)
+  } else if(i == 300){
+    message("Waiting 1 min at", i)
+    Sys.sleep(60)
+  } else if(i == 400){
+    message("Waiting 1 min at", i)
+    Sys.sleep(60)
   }
-  
 }
 
 new_data <- rbind_pages(pages1)
 
-## also need maj_data
+## also need big_data
 
-big_data <- full_join(new_data, maj_data)
+uniq_data <- dplyr::anti_join(new_data, maj_data, by = "listing_id")
+
+
+big_data <- rbind(big_data,uniq_data)
+
+### doesnt need maj_data anymore
+
+rm(pages1)
+rm(new_data)
 
 
