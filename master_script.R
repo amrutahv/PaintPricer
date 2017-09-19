@@ -59,11 +59,11 @@ table(min_data$non_taxable)
 ###### subsetting cheap paintings ########
 cheap_art <- subset(min_data,min_data$price <= 1000)
 p = 541078062 ###this is the listing which has only watercolor pigments
-dim(cheap_art)
+
 cheap_art <- cheap_art [cheap_art$listing_id != p, ]
 
 cheap_art <- cheap_art[cheap_art$listing_id != 465247738, ] ## this contains a paper doll
-
+dim(cheap_art)
 ###### converting list columns into a simple vector ##########
 
 simplify_lists <- function(col_name, separator){
@@ -71,7 +71,6 @@ simplify_lists <- function(col_name, separator){
   return(new_vec)
 }
 
-<<<<<<< HEAD
 complex_cols <- c()
 
 for(i in 1:ncol(cheap_art)){
@@ -80,10 +79,8 @@ for(i in 1:ncol(cheap_art)){
     complex_cols <- c(complex_cols, names(cheap_art)[i])
   }
 }
-
 complex_cols
 
-=======
 for(i in 1:ncol(cheap_art)){
   new_col <- class(cheap_art[, i])
   if(new_col == 'list'){
@@ -91,7 +88,6 @@ for(i in 1:ncol(cheap_art)){
   }
 }
 
->>>>>>> 243cd19643da7ff9823f4ab21634970a0527a808
 cheap_art$tag_col <- simplify_lists(cheap_art$tags, ',')
 str(cheap_art$tag_col)
 cheap_art$mat_col <- simplify_lists(cheap_art$materials, ',')
@@ -101,54 +97,38 @@ str(cheap_art$sty)
 cheap_art$tax_col <- simplify_lists(cheap_art$taxonomy_path, ',')
 str(cheap_art$tax_col)
 
-<<<<<<< HEAD
 cheap_art <- cheap_art[ ,!(names(cheap_art) %in% complex_cols)]
 
-unrel.res <- grepl('christmas ball', cheap_art$mat_col, ignore.case = T) |
-  grepl('dolls', cheap_art$title, ignore.case = T) |
-=======
-
-unrel.res <- grepl('christmas ball', cheap_art$mat_col, ignore.case = T)
-
-unrel.res <- grepl('dolls', cheap_art$title, ignore.case = T) |
->>>>>>> 243cd19643da7ff9823f4ab21634970a0527a808
+unrel.res1 <- grepl('christmas ball', cheap_art$mat_col, ignore.case = T)
+table(unrel.res1)
+unrel.res2 <- grepl('dolls', cheap_art$title, ignore.case = T) |
   grepl('tray' ,cheap_art$title, ignore.case = T) |
   grepl('cabinet', cheap_art$title, ignore.case = T) ### remove christmas balls & dolls
-table(unrel.res)
+table(unrel.res2)
 
-cheap_art <- cheap_art[!(unrel.res), ]
-
+cheap_art <- cheap_art[!(unrel.res1), ]
+cheap_art <- cheap_art[!(unrel.res2), ]
 vid.res <- grepl('video lesson|on-line|powerpoint', cheap_art$title, ignore.case = T)
 table(vid.res)
 cheap_art <- cheap_art[!(vid.res), ]
 
 empty_tags <- c()
 for(i in 1:nrow(cheap_art)){
-<<<<<<< HEAD
   if( (cheap_art$tag_col[i] == "") & (cheap_art$mat_col[i] == "") ){
     empty_tags <- c(empty_tags, cheap_art$listing_id[i])
   }
 }
+
 length(empty_tags)
 
 cheap_art <- cheap_art[!(cheap_art$listing_id %in% empty_tags), ]
 
-row.names(cheap_art) <- cheap_art$listing_id
+cheap_art <- cheap_art[!(cheap_art$listing_id %in% empty_tags), ]
 
 cheap_art <- data.table(cheap_art)
 
-
-
-
-=======
-  if(cheap_art$tag_col[i] == "" ){
-    empty_tags <- c(empty_tags, cheap_art$listing_id[i])
-  }
-}
-cheap_art <- cheap_art[!(cheap_art$listing_id %in% empty_tags), ]
-
 row.names(cheap_art) <- cheap_art$listing_id
->>>>>>> 243cd19643da7ff9823f4ab21634970a0527a808
+
 #### which variables might be of interest? ###############
 # response variable: price
 # predictors: type of painting (oil, water, acrylic, ink, sketch, pastel),
@@ -233,7 +213,7 @@ for(i in 1:length(gic.res)){
 
 table(cheap_art$art_type)
 
-<<<<<<< HEAD
+
 ##### looking for digital prints
 dig.res <- grepl("digital art|clip art|clipart", cheap_art$title, ignore.case = T)
 table(dig.res)
@@ -266,8 +246,7 @@ for(i in 1:nrow(cheap_art)){
 table(cheap_art$art_type)
 table(!is.na(cheap_art$art_type))
 
-=======
->>>>>>> 243cd19643da7ff9823f4ab21634970a0527a808
+
 #### classifying the acrylic paintings
 acr.res <- cheap_art$listing_id[grepl('acrylic', cheap_art$tax_col, ignore.case = T)]
 ### watercolors 
@@ -304,10 +283,7 @@ for(i in 1:nrow(cheap_art)){
 table(cheap_art$art_type)
 table(!is.na(cheap_art$art_type))
 
-<<<<<<< HEAD
 
-
-=======
 ##### looking for digital prints
 dig.res <- grepl("digital art|clip art|clipart|download", cheap_art$title, ignore.case = T)
 table(dig.res)
@@ -335,16 +311,12 @@ for(i in 1:nrow(cheap_art)){
 }
 table(cheap_art$art_type)
 table(!is.na(cheap_art$art_type))
->>>>>>> 243cd19643da7ff9823f4ab21634970a0527a808
+
 
 acr.res2 <- grepl('acrylic', cheap_art$tag_col, ignore.case = T)
 table(acr.res2)
 
-<<<<<<< HEAD
 cheap_art[listing_id == 252390285, ]$art_type <- 'watercolor'
-=======
-
->>>>>>> 243cd19643da7ff9823f4ab21634970a0527a808
 
 ### usually watercolors and acrylics are not painted together, so classify this last
 mix.res5 <- grepl('acrylic', cheap_art$tag_col, ignore.case = T) &
@@ -392,7 +364,7 @@ for(i in 1:nrow(cheap_art)){
 table(cheap_art$raw_mat)
 
 ### classifying watercolor papers
-<<<<<<< HEAD
+
 wat.paper <- c('watercolor', 'watercolor paper', 'paper')
 not.wat <- c('print', 'acrylic', 'oil', 'ink','mixed medi', 'board')
 
@@ -404,7 +376,8 @@ table(wat_pap_res)
 for(i in 1:nrow(cheap_art)){
   if(is.na(cheap_art$art_type[i]) & is.na(cheap_art$raw_mat[i]) & wat_pap_res[i] ){
     cheap_art$art_type[i] <- 'watercolor'
-=======
+  }
+}
 
 pap.res <- grepl('paper', cheap_art$mat_col, ignore.case = T)
 
@@ -415,12 +388,12 @@ for(i in 1:nrow(cheap_art)){
     cheap_art$raw_mat[i] <- NA
   } else if ( ( cheap_art$art_type[i] == 'watercolor' ) & 
               ( pap.res[i] == T ) ) {
->>>>>>> 243cd19643da7ff9823f4ab21634970a0527a808
+
     cheap_art$raw_mat[i] <- 'wat.paper'
   }
 }
 
-<<<<<<< HEAD
+
 table(cheap_art$art_type)
 
 wat_pap_res2 <- cheap_art[art_type == 'watercolor', 
@@ -470,8 +443,7 @@ for(i in 1:nrow(cheap_art)){
 
 table(cheap_art$art_type)
 table(cheap_art$raw_mat)
-=======
->>>>>>> 243cd19643da7ff9823f4ab21634970a0527a808
+
 # pri.res <- grepl('print', cheap_art$mat_col, ignore.case = T)
 # 
 # table(pri.res)
