@@ -123,11 +123,20 @@ length(empty_tags)
 
 cheap_art <- cheap_art[!(cheap_art$listing_id %in% empty_tags), ]
 
-cheap_art <- cheap_art[!(cheap_art$listing_id %in% empty_tags), ]
-
 cheap_art <- data.table(cheap_art)
 
 row.names(cheap_art) <- cheap_art$listing_id
+
+####### written the dataset to a csv file ###################
+write.csv(cheap_art[ ,-c(44,45)], 'cheap_art.csv')
+
+write.table(cheap_art, file = 'cheap_art.txt', 
+            sep='mycustdelim', eol = 'mycusteol')
+#############################################################
+################# clear the environment #####################
+################# load cheap_art.csv file ###################
+
+cheap_art <- fread('cheap_art.csv', stringsAsFactors = T, drop = 1) # drop 1st extra column with sr numbers
 
 #### which variables might be of interest? ###############
 # response variable: price
@@ -140,11 +149,8 @@ row.names(cheap_art) <- cheap_art$listing_id
 # individual artisits?)
 # whether it is original or a print
 # how many views and how many favorers
-# when_made : can give indication of age of painting ##########
-
-table(cheap_art$is_digital)
-table(cheap_art$is_customizable)
-table(cheap_art$when_made)
+# when_made : can give indication of age of painting #
+# distance between modified time and ending time ########
 
 ### simple pattern checking
 
@@ -190,11 +196,19 @@ pri.res <- grepl('prints', cheap_art$tax_col, ignore.case = T)
 table(pri.res)
 pri.res.2 <- grepl('print', cheap_art$tag_col, ignore.case = T)
 table(pri.res.2)
+pri.res.3 <- grepl('print', cheap_art$mat_col, ignore.case = T)
+table(pri.res.3)
 
 for (i in 1:nrow(cheap_art)){
   if (( pri.res[i] | pri.res.2[i] )){
     cheap_art$art_type[i] <- 'prints'
   } 
+}
+
+for(i in 1:nrow(cheap_art)){
+  if ( is.na(cheap_art$art_type) [i] | pri.res.3[i] ){
+    cheap_art$art_type[i] <- 'prints'
+  }
 }
 
 table(cheap_art$art_type)
@@ -283,39 +297,6 @@ for(i in 1:nrow(cheap_art)){
 table(cheap_art$art_type)
 table(!is.na(cheap_art$art_type))
 
-
-##### looking for digital prints
-dig.res <- grepl("digital art|clip art|clipart|download", cheap_art$title, ignore.case = T)
-table(dig.res)
-dig.res2 <- grepl('digital art|clip art|digital', cheap_art$mat_col, ignore.case = T)
-table(dig.res2)
-dig.res3 <- grepl('digital download|instant download|download|digital|e-pattern|electronic', cheap_art$description, ignore.case = T)
-table(dig.res3)
-dig.res4 <- grepl('digital art|clip art|digital', cheap_art$tag_col, ignore.case = T)
-table(dig.res4)
-
-for (i in 1:nrow(cheap_art)){
-  if( dig.res[i] | dig.res2[i] | dig.res3[i] | dig.res4[i] ){
-    cheap_art$art_type[i] <- 'dig.art'
-  }
-}
-
-### other types: spray paint, ink
-oth.res <- grepl('spray|ink', cheap_art$tax_col, ignore.case = T)
-table(oth.res)
-
-for(i in 1:nrow(cheap_art)){
-  if( oth.res [i] & is.na(cheap_art$art_type[i] ) ){
-    cheap_art$art_type [i] <- 'other'
-  }
-}
-table(cheap_art$art_type)
-table(!is.na(cheap_art$art_type))
-
-
-acr.res2 <- grepl('acrylic', cheap_art$tag_col, ignore.case = T)
-table(acr.res2)
-
 cheap_art[listing_id == 252390285, ]$art_type <- 'watercolor'
 
 ### usually watercolors and acrylics are not painted together, so classify this last
@@ -351,16 +332,23 @@ ggplot(cheap_art, aes(art_type, price))+
 cheap_art[, 'raw_mat'] <- NA
 
 ## pre-classify prints to photo paper and digital art to digital
-for(i in 1:nrow(cheap_art)){
-  if(is.na(cheap_art$art_type[i])){
-    cheap_art$raw_mat[i] <- NA
-  } else if(cheap_art$art_type[i] == 'prints'){
-    cheap_art$raw_mat[i] <- 'photo paper'
-  } else if(cheap_art$art_type[i] == 'dig.art'){
-    cheap_art$raw_mat[i] <- 'digital'
+system.time(for(i in 1:nrow(cheap_art)){
+  if (!is.na(cheap_art$art_type[i])){
+    if(cheap_art$art_type[i] == 'prints'){
+      cheap_art$raw_mat[i] <- 'photo paper'
+    } else if(cheap_art$art_type[i] == 'dig.art'){
+      cheap_art$raw_mat[i] <- 'digital'
+    } 
+    
   }
-  
+})
+
+for(i in 1:nrow(cheap_art)){
+  if(cheap_art$art_type[i] == 'prints'){
+    cheap_art$raw_mat[i] <- 'photo paper'
+  }
 }
+
 table(cheap_art$raw_mat)
 
 ### classifying watercolor papers
@@ -376,37 +364,13 @@ table(wat_pap_res)
 for(i in 1:nrow(cheap_art)){
   if(is.na(cheap_art$art_type[i]) & is.na(cheap_art$raw_mat[i]) & wat_pap_res[i] ){
     cheap_art$art_type[i] <- 'watercolor'
-  }
-}
-
-pap.res <- grepl('paper', cheap_art$mat_col, ignore.case = T)
-
-table(pap.res)
-length(pap.res)
-for(i in 1:nrow(cheap_art)){
-  if(is.na(cheap_art$art_type[i])){
-    cheap_art$raw_mat[i] <- NA
-  } else if ( ( cheap_art$art_type[i] == 'watercolor' ) & 
-              ( pap.res[i] == T ) ) {
-
     cheap_art$raw_mat[i] <- 'wat.paper'
   }
 }
-
-
+table(cheap_art$raw_mat)
 table(cheap_art$art_type)
-
-wat_pap_res2 <- cheap_art[art_type == 'watercolor', 
-                          .(listing_id, grepl('paper', raw_mat, ignore.case = T)), ] ## only works if it is data.table
-  
-counter = 0
-for(i in 1:nrow(wat_pap_res2)){
-  if( wat_pap_res2$V2[i] ){
-    print(cheap_art[listing_id == wat_pap_res2$listing_id[i], listing_id])
-    counter = counter + 1
-    print(counter)
-  }
-}
+table(!is.na(cheap_art$art_type))
+table(!is.na(cheap_art$raw_mat))
 
 ### classifying acrylic and canvas
 acr.canv <- c('acrylic', 'canvas')
@@ -423,8 +387,23 @@ for(i in 1:nrow(cheap_art)){
     cheap_art$raw_mat[i] <- 'canvas'
   }
 }
+
 table(cheap_art$art_type)
 table(cheap_art$raw_mat)
+
+acr.papr <- c('acrylic', 'paper')
+acr_pap_res <- grepl(paste0(acr.papr, collapse = '|'), cheap_art$mat_col, ignore.case = T) &
+  !grepl(paste0(not.acr, collapse = '|'), cheap_art$mat_col, ignore.case = T)
+table(acr_pap_res)
+
+for( i in 1:nrow(cheap_art) ){
+  if( ( is.na(cheap_art$art_type[i]) ) & 
+      ( is.na(cheap_art$raw_mat[i] ) ) & 
+      ( acr_pap_res[i] ) ){
+    cheap_art$art_type[i] <- 'acrylic'
+    cheap_art$raw_mat[i] <- 'paper'
+  }
+}
 
 ### classifying oil and canvas
 oil.canv <- c('oil','canvas')
@@ -442,7 +421,9 @@ for(i in 1:nrow(cheap_art)){
 }
 
 table(cheap_art$art_type)
+table(!is.na(cheap_art$art_type))
 table(cheap_art$raw_mat)
+table(!is.na(cheap_art$raw_mat))
 
 # pri.res <- grepl('print', cheap_art$mat_col, ignore.case = T)
 # 
@@ -462,7 +443,8 @@ can.res2 <- grepl('canvas', cheap_art$tag_col, ignore.case = T)
 table(can.res2)
 
 for(i in 1:nrow(cheap_art)){
-  if( can.res [i] | can.res2 [i] ){
+  if( is.na(cheap_art$raw_mat[i] ) &
+      ( ( can.res [i] | can.res2 [i] ) ) ){
     cheap_art$raw_mat[i] <- 'canvas'
     
   }
@@ -470,6 +452,7 @@ for(i in 1:nrow(cheap_art)){
 
 table(cheap_art$raw_mat)
 table(!is.na(cheap_art$raw_mat))
+
 #### more cleaning using description tags
 wat.res <- grepl('watercolor', cheap_art$description, ignore.case = T)
 table(wat.res)
