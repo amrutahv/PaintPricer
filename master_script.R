@@ -473,6 +473,8 @@ for(i in 1:nrow(cheap_art)){
 table(cheap_art$raw_mat)
 table(!is.na(cheap_art$raw_mat))
 
+write.table(cheap_art, 'cheap_art_full1.csv', sep = ',')
+
 ###### classifying dimensions of painting: area ########
 cheap_art$dimen_item <- as.numeric(cheap_art$item_length) * 
   as.numeric(cheap_art$item_height)
