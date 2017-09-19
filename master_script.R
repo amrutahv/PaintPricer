@@ -425,6 +425,14 @@ table(!is.na(cheap_art$art_type))
 table(cheap_art$raw_mat)
 table(!is.na(cheap_art$raw_mat))
 
+pap.res <- grepl('paper', cheap_art$mat_col, ignore.case = T)
+table(pap.res)
+
+for(i in 1:nrow(cheap_art)){
+  if( is.na(cheap_art$raw_mat)[i] & pap.res[i] ){
+    cheap_art$raw_mat[i] <- 'handmade paper'
+  }
+}
 # pri.res <- grepl('print', cheap_art$mat_col, ignore.case = T)
 # 
 # table(pri.res)
@@ -453,19 +461,17 @@ for(i in 1:nrow(cheap_art)){
 table(cheap_art$raw_mat)
 table(!is.na(cheap_art$raw_mat))
 
-#### more cleaning using description tags
-wat.res <- grepl('watercolor', cheap_art$description, ignore.case = T)
-table(wat.res)
+oth.res2 <- grepl('resin|board', cheap_art$mat_col, ignore.case = T)
+table(oth.res2)
+
 for(i in 1:nrow(cheap_art)){
-  if( ( is.na(cheap_art$raw_mat[i] ) ) & ( wat.res[i] ) ){
-    cheap_art$raw_mat[i] <- 'wat.paper'
-  } 
+  if( is.na(cheap_art$raw_mat)[i] & oth.res2[i] ){
+    cheap_art$raw_mat[i] <- 'other'
+  }
 }
 
 table(cheap_art$raw_mat)
-
-### digital arts 
-
+table(!is.na(cheap_art$raw_mat))
 
 ###### classifying dimensions of painting: area ########
 cheap_art$dimen_item <- as.numeric(cheap_art$item_length) * 
@@ -476,14 +482,27 @@ table(!is.na(cheap_art$dimen_item))
 
 input_text_vec <- c('listing_id', 'title', 'description', 'item_length', 
                     'item_height', 'item_width')
-write.table(cheap_art[,input_text_vec], file = 'text_data.txt', 
+
+write.table(cheap_art[, ..input_text_vec], file = 'text_data.txt', 
             sep='mycustdelim', eol = 'mycusteol')
 
 system('perl extractDimensions.pl text_data.txt')  #creates final_text_data.txt with extracted dimensions.
-temp1 <- read.delim('final_text_data.txt', sep = '~', na.strings = 'NA', stringsAsFactors = F, header = F)
 
-names(temp1) <- c("listing_id", "length", "breadth", "thickness")
-cheap_art <- merge(cheap_art, temp1)
+temp1 <- read.csv2('final_text_data.txt', na.strings = 'NA', 
+               stringsAsFactors = F, header = F)
+
+temp2 <- read.csv('temp.txt')
+
+typeof(temp1)
+typeof(temp2)
+dim(temp1)[1]
+do.call(rbind.data.frame, temp1)
+data.frame(t(sapply(temp1,c)))
+
+
+merge(cheap_art, as.data.frame(temp1))
+
+names(temp1) <- c('listing_id','length','breadth','thickness')
 
 
 ###### classifying content of painting using tags ######

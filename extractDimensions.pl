@@ -301,21 +301,21 @@ while( $line = <OUT_FH3> ){
   if( $columns[3] !~ /\"/ ) {
     $columns[3] =~ s/ //g;
     $columns[3] =~ s/\t//g;
-    $columns[3] = "\"".$columns[3]."\"";
+    #$columns[3] = "\"".$columns[3]."\"";
   }
   
   if( $columns[4] !~ /\"/ ) {
     $columns[4] =~ s/ //g;
     $columns[4] =~ s/\t//g;
-    $columns[4] = "\"".$columns[4]."\"";
+    #$columns[4] = "\"".$columns[4]."\"";
   }
   if( $columns[5] !~ /\"/ ) {
     $columns[5] =~ s/ //g;
     $columns[5] =~ s/\t//g;
-    $columns[5] = "\"".$columns[5]."\"";
+    #$columns[5] = "\"".$columns[5]."\"";
   }
   
-  print OUT_FINAL "$columns[0] ~ $columns[3] ~ $columns[4] ~ $columns[5]"; 
+  print OUT_FINAL "$columns[0] , $columns[3] , $columns[4] , $columns[5]\n"; 
   
   print OUT_FINAL "\n";
 
