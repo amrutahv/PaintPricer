@@ -1012,6 +1012,13 @@ learnCurve_rfm1d4 <- learing_curve_dat(rf_data4, test_prop = 1/4, verbose = T,
                                        method = 'rf', outcome = 'price')
 print(Sys.time())
 
+ggplot(learnCurve, aes(Training_Size, y = RMSE, col = Data))+
+  geom_smooth(method = 'loess')
+
+ggplot(learnCurve_rfm1d4, aes(Training_Size, y = Rsquared, col = Data))+
+  geom_smooth(method = 'loess')
+names(rf_data1)
+
 
 
 

@@ -56,7 +56,7 @@ table(min_data$recipient)
 table(min_data$occasion)
 table(min_data$non_taxable)
 
-###### subsetting cheap paintings ########
+###### Cheap art: subsetting cheap paintings ########
 cheap_art <- subset(min_data,min_data$price <= 1000)
 p = 541078062 ###this is the listing which has only watercolor pigments
 
@@ -101,10 +101,9 @@ cheap_art <- cheap_art[ ,!(names(cheap_art) %in% complex_cols)]
 
 unrel.res1 <- grepl('christmas ball', cheap_art$mat_col, ignore.case = T)
 table(unrel.res1)
-unrel.res2 <- grepl('dolls', cheap_art$title, ignore.case = T) |
-  grepl('tray' ,cheap_art$title, ignore.case = T) |
-  grepl('cabinet', cheap_art$title, ignore.case = T) ### remove christmas balls & dolls
+unrel.res2 <- grepl('dolls|tray|cabinet|pendant|paintbrush|scarf', cheap_art$title, ignore.case = T)
 table(unrel.res2)
+
 
 cheap_art <- cheap_art[!(unrel.res1), ]
 cheap_art <- cheap_art[!(unrel.res2), ]
@@ -138,7 +137,7 @@ write.table(cheap_art, file = 'cheap_art.txt',
 
 cheap_art <- fread('cheap_art.csv', stringsAsFactors = T, drop = 1) # drop 1st extra column with sr numbers
 
-#### which variables might be of interest? ###############
+# which variables might be of interest?
 # response variable: price
 # predictors: type of painting (oil, water, acrylic, ink, sketch, pastel),
 # content of painting (abstract, nature, real-life, potrait)
@@ -150,7 +149,44 @@ cheap_art <- fread('cheap_art.csv', stringsAsFactors = T, drop = 1) # drop 1st e
 # whether it is original or a print
 # how many views and how many favorers
 # when_made : can give indication of age of painting #
-# distance between modified time and ending time ########
+
+########## Time: distance between modified time and ending time ########
+names(cheap_art)
+table(!is.na(cheap_art$original_creation_tsz))
+
+ref_time <- 1504638000 #5th sept 12.00 noon to epoch time
+
+ggplot(cheap_art[art_type == 'oil'], aes(ending_tsz - ref_time, price))+
+  geom_point()
+
+time_since <- (abs(cheap_art$ending_tsz - ref_time))/abs(cheap_art$original_creation_tsz - ref_time)
+
+plot(time_since, cheap_art$price)
+
+ggplot(cheap_art,  aes(ref_time - original_creation_tsz, price))+
+  geom_point()
+
+ggplot(cheap_art, aes((ending_tsz - ref_time)/ref_time, price))+
+  geom_point()
+
+ggplot(cheap_art, aes(ending_tsz - ref_time))+
+  geom_histogram(bins = 200)
+
+ggplot(cheap_art, aes((creation_tsz - original_creation_tsz)/(ending_tsz - original_creation_tsz), 
+                      price, col = art_type))+
+  geom_point()
+
+ggplot(cheap_art, aes(log(ending_tsz - original_creation_tsz), views))+
+  geom_point()
+
+ggplot(cheap_art, aes((ending_tsz - ref_time)/(ending_tsz-original_creation_tsz), price))+
+  geom_point()
+
+ggplot(cheap_art, aes(log(ending_tsz - ref_time), price))+
+  geom_point()
+
+cheap_art$timespan <- (cheap_art$ending_tsz - ref_time) / (cheap_art$ending_tsz - cheap_art$original_creation_tsz)
+
 
 ### simple pattern checking
 
@@ -461,7 +497,7 @@ for(i in 1:nrow(cheap_art)){
 table(cheap_art$raw_mat)
 table(!is.na(cheap_art$raw_mat))
 
-oth.res2 <- grepl('resin|board', cheap_art$mat_col, ignore.case = T)
+oth.res2 <- grepl('resin|board|wood|stencil|envelope|card', cheap_art$mat_col, ignore.case = T)
 table(oth.res2)
 
 for(i in 1:nrow(cheap_art)){
@@ -471,11 +507,16 @@ for(i in 1:nrow(cheap_art)){
 }
 
 table(cheap_art$raw_mat)
-table(!is.na(cheap_art$raw_mat))
+table(!is.na(cheap_art$raw_mat)) #### fairly complete
+
+
+################# store the data in csv format #######################
 
 write.table(cheap_art, 'cheap_art_full1.csv', sep = ',')
 
-###### classifying dimensions of painting: area ########
+cheap_art <- fread('cheap_art_full1.csv', stringsAsFactors = T)
+
+###### Dimensions: classifying dimensions of painting: area ########
 cheap_art$dimen_item <- as.numeric(cheap_art$item_length) * 
   as.numeric(cheap_art$item_height)
 hist(cheap_art$dimen_item)
@@ -490,103 +531,45 @@ write.table(cheap_art[, ..input_text_vec], file = 'text_data.txt',
 
 system('perl extractDimensions.pl text_data.txt')  #creates final_text_data.txt with extracted dimensions.
 
-temp1 <- read.csv2('final_text_data.txt', na.strings = 'NA', 
+temp1 <- read.csv('final_text_data.txt', na.strings = 'NA', 
                stringsAsFactors = F, header = F)
 
-temp2 <- read.csv('temp.txt')
+head(as.matrix(temp1))
+temp2 <- data.frame(listing_id = as.matrix(temp1)[ ,1],
+                    length = as.matrix(temp1)[ ,2],
+                    breadth = as.matrix(temp1)[ ,3],
+                    thickness = as.matrix(temp1)[ ,4])
 
-typeof(temp1)
-typeof(temp2)
-dim(temp1)[1]
-do.call(rbind.data.frame, temp1)
-data.frame(t(sapply(temp1,c)))
+temp2$listing_id <- as.numeric(temp2$listing_id)
+temp2$length <- as.numeric(temp2$length)
+temp2$breadth <- as.numeric(temp2$breadth)
+temp2$thickness <- as.numeric(temp2$thickness)
 
+#cheap_art <- merge(cheap_art, temp2)
 
-merge(cheap_art, as.data.frame(temp1))
+cheap_art[cheap_art$listing_id %in% temp2$listing_id, ]
 
-names(temp1) <- c('listing_id','length','breadth','thickness')
-
-
-###### classifying content of painting using tags ######
-
-pri.res.2 <- grepl('print', cheap_art$tag_col, ignore.case = T) 
-
-for (i in 1:nrow(cheap_art)){
-  if ( ( pri.res.2[i] ) ){
-    cheap_art$raw_mat[i] <- 'photo paper'
-    cheap_art$art_type[i] <- 'prints'
-  }
-}
-
-### classifying digital prints
-table(cheap_art$is_digital)
-
-for ( i in 1:nrow(cheap_art)){
-  if ( cheap_art$is_digital[i] ){
-    cheap_art$raw_mat[i] <- 'digital'
-    cheap_art$art_type[i] <- 'dig.art'
-  }
-}
-
-table(cheap_art$art_type)
-table(!is.na(cheap_art$art_type)) ## filled in most of data
-table(cheap_art$raw_mat)
-table(!is.na(cheap_art$raw_mat))
 
 ####### starting with a few variables at the moment ### #########
 names(cheap_art)
 hist(cheap_art$quantity)
 quantile(cheap_art$quantity)
-dim(cheap_art[which(cheap_art$quantity < 1000), ])
-cheap_art_use <- cheap_art[!(cheap_art$quantity == 7992), ]
-names(cheap_art_use)
+dim(cheap_art[which(cheap_art$quantity <= 1000), ])
+
+
 relfeat <- c('listing_id', 'title', 'description', 'price', 'quantity', 'views','num_favorers',
              'who_made', 'when_made', 'is_customizable', 'has_variations', 'tag_col',
-             'mat_col', 'tax_col', 'art_type', 'raw_mat', 'dimen_item')
+             'mat_col', 'tax_col', 'art_type', 'raw_mat', 'timespan')
 
-mod_df <- cheap_art_use[, relfeat]
-dim(mod_df)
-
-#### converting to a datatable
-mod_data <- data.table(mod_df)
-mod_data
+mod_data <- cheap_art[cheap_art$quantity <= 1000, ..relfeat]
+dim(mod_data)
+is.data.table(mod_data)
 
 setkeyv(mod_data, c("art_type", "price", "listing_id"))
-table(mod_data$art_type)
-
-mod_data$raw_mat
-
-#### plugging in more holes in the art_type as it is my most important predictor
-oil.res2 <- grepl('oil color | oil painting', mod_data$mat_col)
-table(oil.res2)
-
-for(plugs in 1:nrow(mod_data)){
-  if( is.na(mod_data$art_type[plugs] ) & ( oil.res2[plugs] )){
-    mod_data$art_type[plugs] <- 'oil'
-    
-  }
-}
-
-oil.res3 <- grepl('oil color | oil painting', mod_data$tag_col, ignore.case = T)
-table(oil.res3)
-
-
-for(plugs in 1:nrow(mod_data)){
-  if( is.na(mod_data$art_type[plugs] ) & ( oil.res3[plugs] )){
-    mod_data$art_type[plugs] <- 'oil'
-    
-  }
-}
-
-
-
-
 
 table(mod_data$art_type)
-table(cheap_art_use$art_type) # compare above table with this one: above should be more
-table(!is.na(cheap_art_use$art_type))
 table(!is.na(mod_data$art_type))
-
+table(!is.na(mod_data$raw_mat))
 table(mod_data$art_type,mod_data$raw_mat)
 
 table(mod_data$raw_mat, mod_data$is_customizable)
@@ -603,7 +586,7 @@ names(mod_data)
 
 rf_data1 <- mod_data[, c('price', 'quantity', 'views', 'num_favorers', 'who_made',
                          'when_made', 'is_customizable', 'has_variations', 'art_type',
-                         'raw_mat')]
+                         'raw_mat', 'timespan')]
 rf_data1 <- data.table(rf_data1, stringsAsFactors = T)
 rf_data1 <- rf_data1[complete.cases(rf_data1), ]
 setkeyv(rf_data1, c('price', 'art_type'))
@@ -614,8 +597,10 @@ train1 <- sample(nrow(rf_data1), nrow(rf_data1) * 0.8)
 data_train1 <- rf_data1[train1, ]
 data_test1 <- rf_data1[-train1, ]
 
-rfm1 <- randomForest::randomForest(price ~., data_train1, ntree = 500, 
-                                   na.action = na.omit)
+write.csv(rf_data1, 'rf_data1.csv')
+
+rfm1 <- randomForest::randomForest(price ~., data_train1)
+
 rfm1
 importance(rfm1)
 
